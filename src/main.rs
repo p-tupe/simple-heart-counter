@@ -5,10 +5,10 @@ use axum::{
     routing::{get, post},
 };
 use axum_client_ip::{ClientIp, ClientIpSource};
-use env_logger::Env;
 use serde::Serialize;
 use std::{env, error::Error, fs, net::SocketAddr};
 use tokio_rusqlite::{Connection, params};
+use tower_http::cors::Any;
 
 #[derive(Clone)]
 struct AppState {
@@ -17,17 +17,24 @@ struct AppState {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::init();
 
     let script = fs::read_to_string("shc.js").expect("read shc.js");
     let db = Connection::open("./shc.db").await?;
-    let _ = initialize(&db).await;
+
+    initialize(&db).await?;
 
     let app = Router::new()
         .route("/shc.js", get(script))
         .route("/count/increment", post(increment_count))
         .route("/count", post(get_count))
         .layer(ClientIpSource::ConnectInfo.into_extension())
+        .layer(
+            tower_http::cors::CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .with_state(AppState { db });
 
     let port = &env::var("PORT").map_or("3000".into(), |f| f);
