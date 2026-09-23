@@ -27,26 +27,28 @@
       if (d.status != 200) {
         throw Error("Request failed: ", d.statusText);
       }
-      return d.json();
+      const data = d.json();
+      return data;
     })
-    .then(({ count }) => {
+    .then(({ data: { count, clicked } }) => {
       countEl.textContent = count;
+      if (clicked) {
+        shc.classList.add("shc-clicked");
+        shc.disabled = true;
+      }
     })
-    .catch((e) => {
-      console.error(e);
-    });
+    .catch(console.error);
 
   shc.addEventListener("click", () => {
-    console.log("Incrementing count...")
     const currCount = Number(countEl.textContent) || 0;
     countEl.textContent = currCount + 1;
+    shc.classList.add("shc-clicked");
+    shc.disabled = true;
 
     fetch(baseURL.value + "/count/increment", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ url: window.location.toString() }),
-    }).catch((e) => {
-      console.error(e);
-    });
+    }).catch(console.error);
   });
 })();

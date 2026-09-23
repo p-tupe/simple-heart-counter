@@ -3,11 +3,47 @@
 <html>
 
 <body>
-  <!-- Add some icon inside the div, using unicode as placeholder -->
-  <div id="shc" data-url="http://localhost:3001">&#x2661;</div>
+  <!-- First, add some icon with id="shc" and a data-url pointing to shc server -->
+  <main>
+    <button id="shc" data-url="http://localhost:3001"> &#x2661; </button>
+  </main>
 
-  <!-- Script will find #shc, add an on-click event and the count besides it -->
-  <script src="http://localhost:3001/shc.js"></script>
+  <!-- OR you may use a custom count element inside shc wrapper, id'd as shc-count -->
+  <!-- <button id="shc" data-url="http://localhost:3001">&#x2661;
+    <div id="shc-count" />
+  </button>-->
+
+  <!-- Then, script will find #shc, add an on-click event and the count besides it -->
+  <script src="http://localhost:3001/shc.js" type="text/javascript"></script>
+
+  <!-- Optionally, use .shc-clicked to customize how the button looks after clicking -->
+  <style>
+    .shc-clicked {
+      color: crimson;
+    }
+
+    /* below styles are just for the demo page */
+    main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80vh;
+    }
+
+    button {
+      font-size: 64px;
+      background: none;
+      color: inherit;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      outline: inherit;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+    }
+  </style>
 </body>
 
 </html>

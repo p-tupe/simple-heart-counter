@@ -88,8 +88,8 @@ async fn increment_count(
         .db
         .call(move |conn| {
             conn.execute(
-                "insert into counts (user, url, count) values (?, ?, ?) 
-on conflict do update set count=count+1;",
+                "insert into counts (user, url, count) values (?, ?, ?)
+on conflict do nothing;",
                 params![user, url, 1],
             )
         })
@@ -108,7 +108,7 @@ on conflict do update set count=count+1;",
 #[derive(Serialize)]
 #[serde(rename_all = "lowercase")]
 enum Resp {
-    Count(i32),
+    Data { count: i32, clicked: bool },
     Error(String),
 }
 
@@ -136,20 +136,31 @@ async fn get_count(
         .db
         .call(move |conn| {
             conn.query_one(
-                "select count from counts where user = (?) and url = (?);",
+                "select count(*) as count,
+(select count(*) from counts where user = (?)) as clicked
+from counts where url = (?);",
                 params![user, url],
                 |row| {
+                    print!("{:?}", row);
                     let count = row.get(0).unwrap_or(0);
-                    Ok(count)
+                    let clicked = row.get(1).unwrap_or(0);
+                    Ok((count, clicked == 1))
                 },
             )
         })
         .await
     {
-        Ok(count) => Json(Resp::Count(count)),
+        Ok((count, clicked)) => Json(Resp::Data { clicked, count }),
         Err(e) => {
-            log::error!("could not increment due to {}", e);
-            return Json(Resp::Error("could not find count".into()));
+            if e.to_string() == "Query returned no rows" {
+                return Json(Resp::Data {
+                    clicked: false,
+                    count: 0,
+                });
+            } else {
+                log::error!("could not return count due to {}", e);
+                return Json(Resp::Error("could not find count".into()));
+            }
         }
     }
 }
