@@ -40,6 +40,7 @@
     .catch(console.error);
 
   shc.addEventListener("click", () => {
+    // TODO: add decrement instead of disabling
     const currCount = Number(countEl.textContent) || 0;
     countEl.textContent = currCount + 1;
     shc.classList.add("shc-clicked");
