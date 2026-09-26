@@ -1,9 +1,12 @@
 use axum::{
     Router,
+    http::header,
+    response::Html,
     routing::{get, post},
 };
 use axum_client_ip::ClientIpSource;
-use std::{env, error::Error, fs, net::SocketAddr};
+use log::LevelFilter;
+use std::{env, error::Error, net::SocketAddr};
 use tokio_rusqlite::Connection;
 use tower_http::cors::Any;
 
@@ -13,15 +16,22 @@ mod handlers;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    env_logger::init();
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::Info)
+        .init();
 
-    let script = fs::read_to_string("shc.js").expect("read shc.js");
+    let example_html = include_str!("../example/index.html");
+    let script = include_str!("./shc.js");
     let db = Connection::open("./shc.db").await?;
 
     initialize(&db).await?;
 
     let app = Router::new()
-        .route("/shc.js", get(script))
+        .route("/", get(Html(example_html)))
+        .route(
+            "/shc.js",
+            get(([(header::CONTENT_TYPE, "text/javascript")], script)),
+        )
         .route("/count", post(get_count))
         .route("/count/increment", post(increment_count))
         .route("/count/decrement", post(decrement_count))
@@ -34,8 +44,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         )
         .with_state(AppState { db });
 
-    let port = &env::var("PORT").unwrap_or("3000".into());
-    let addr = format!("127.0.0.1:{}", port);
+    let host = &env::var("HOST").unwrap_or("localhost".into());
+    let port = &env::var("PORT").unwrap_or("3001".into());
+    let addr = format!("{}:{}", host, port); // TODO: SocketAddr
     log::info!("starting server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     Ok(axum::serve(

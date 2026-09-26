@@ -17,12 +17,11 @@ pub async fn initialize(db: &Connection) -> Result<(), tokio_rusqlite::Error> {
         conn.execute_batch(
             "create table if not exists counts (
     user text not null, -- from headers: ip + user-agent
-    url text not null,
-    count integer not null default 0,
-    timestamp datetime not null default current_timestamp
-);
+    url text not null, -- from window.location in shc.js
+    updated_at datetime not null default current_timestamp
+); -- each row is a 'count' for that url
 
-create unique index if not exists idx_headers_url on counts (user, url);",
+create unique index if not exists idx_user_url on counts (user, url);",
         )
     })
     .await
@@ -64,7 +63,7 @@ pub async fn get_count(
 from counts where url = (?);",
                 params![user, url],
                 |row| {
-                    print!("{:?}", row);
+                    log::info!("{:?}", row);
                     let count = row.get(0).unwrap_or(0);
                     let clicked = row.get(1).unwrap_or(0);
                     Ok((count, clicked == 1))
@@ -73,7 +72,10 @@ from counts where url = (?);",
         })
         .await
     {
-        Ok((count, clicked)) => Json(Resp::Data { clicked, count }),
+        Ok((count, clicked)) => {
+            log::info!("count: {}, clicked: {}", count, clicked);
+            Json(Resp::Data { clicked, count })
+        }
         Err(e) => {
             if e.to_string() == "Query returned no rows" {
                 Json(Resp::Data {
@@ -112,8 +114,7 @@ pub async fn increment_count(
         .db
         .call(move |conn| {
             conn.execute(
-                "insert into counts (user, url, count) values (?, ?, 1)
-on conflict do nothing;",
+                "insert into counts (user, url) values (?, ?) on conflict do nothing;",
                 params![user, url],
             )
         })
@@ -153,7 +154,7 @@ pub async fn decrement_count(
         .db
         .call(move |conn| {
             conn.execute(
-                "update counts set count = count - 1 where user = (?) and url = (?);",
+                "delete from counts where user = (?) and url = (?);",
                 params![user, url],
             )
         })
