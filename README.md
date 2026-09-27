@@ -55,9 +55,9 @@ PORT=8080 RUST_LOG=error simple-heart-counter
 
 ## How it works
 
-When the script (see `./src/shc.js`) is first loaded, it pulls in the `/count` for current `user` and `url` and appends it by searching `#idc`.
+When the script (see `./src/shc.js`) is first loaded, it pulls in the `/count` for current `user` and `url` and appends it by searching `#shc`.
 
-A `user` is identified by `ip:user-agent`, all coming in with the request header. This does mean that the same user can add mutiple hearts from different browsers/devices. I consider this a feature ;)
+A `user` is identified by `ip:user-agent` from the request header. This does mean that the same user can add mutiple hearts from different browsers/devices. I consider this a feature ;)
 
 A `url` is supplied by the request as `window.location`. I thought of allowing it to be configured but eh, goes beyond the "plug-n-play" doctrine. Feel free to update shc.js as you desire though - MIT license and all that.
 

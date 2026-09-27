@@ -16,3 +16,9 @@ tower-http = { version = "0.7.1", features = ["cors"] }
 
 [profile.dev]
 incremental = true
+
+[profile.release]
+strip = "symbols"
+lto = "thin"
+codegen-units = 1
+panic = "abort"

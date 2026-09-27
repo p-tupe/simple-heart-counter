@@ -15,7 +15,8 @@ pub struct AppState {
 pub async fn initialize(db: &Connection) -> Result<(), tokio_rusqlite::Error> {
     db.call(|conn| {
         conn.execute_batch(
-            "create table if not exists counts (
+            "
+create table if not exists counts (
     user text not null, -- from headers: ip + user-agent
     url text not null, -- from window.location in shc.js
     updated_at datetime not null default current_timestamp
@@ -58,12 +59,12 @@ pub async fn get_count(
         .db
         .call(move |conn| {
             conn.query_one(
-                "select count(*) as count,
+                "
+select count(*) as count,
 (select count(*) from counts where user = (?)) as clicked
 from counts where url = (?);",
                 params![user, url],
                 |row| {
-                    log::info!("{:?}", row);
                     let count = row.get(0).unwrap_or(0);
                     let clicked = row.get(1).unwrap_or(0);
                     Ok((count, clicked == 1))
@@ -72,10 +73,7 @@ from counts where url = (?);",
         })
         .await
     {
-        Ok((count, clicked)) => {
-            log::info!("count: {}, clicked: {}", count, clicked);
-            Json(Resp::Data { clicked, count })
-        }
+        Ok((count, clicked)) => Json(Resp::Data { clicked, count }),
         Err(e) => {
             if e.to_string() == "Query returned no rows" {
                 Json(Resp::Data {
@@ -123,11 +121,9 @@ pub async fn increment_count(
         Ok(_) => StatusCode::OK,
         Err(e) => {
             log::error!("could not increment due to {}", e);
-            return StatusCode::INTERNAL_SERVER_ERROR;
+            StatusCode::INTERNAL_SERVER_ERROR
         }
-    };
-
-    StatusCode::OK
+    }
 }
 
 pub async fn decrement_count(
@@ -163,9 +159,7 @@ pub async fn decrement_count(
         Ok(_) => StatusCode::OK,
         Err(e) => {
             log::error!("could not decrement due to {}", e);
-            return StatusCode::INTERNAL_SERVER_ERROR;
+            StatusCode::INTERNAL_SERVER_ERROR
         }
-    };
-
-    StatusCode::OK
+    }
 }

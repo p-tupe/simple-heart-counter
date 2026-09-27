@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    http::header,
+    http::{self, header},
     response::Html,
     routing::{get, post},
 };
@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     initialize(&db).await?;
 
     let app = Router::new()
+        .route("/health", get(http::StatusCode::OK))
         .route("/", get(Html(example_html)))
         .route(
             "/shc.js",
