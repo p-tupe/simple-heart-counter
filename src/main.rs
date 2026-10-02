@@ -10,7 +10,7 @@ use std::{env, error::Error, net::SocketAddr};
 use tokio_rusqlite::Connection;
 use tower_http::cors::Any;
 
-use crate::handlers::{AppState, decrement_count, get_count, increment_count, initialize};
+use crate::handlers::{AppState, count, initialize};
 
 mod handlers;
 
@@ -23,8 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let example_html = include_str!("../example/index.html");
     let script = include_str!("./shc.js");
     let db = Connection::open("./shc.db").await?;
-
-    initialize(&db).await?;
+    let salt = initialize(&db).await?;
 
     let app = Router::new()
         .route("/health", get(http::StatusCode::OK))
@@ -33,17 +32,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
             "/shc.js",
             get(([(header::CONTENT_TYPE, "text/javascript")], script)),
         )
-        .route("/count", post(get_count))
-        .route("/count/increment", post(increment_count))
-        .route("/count/decrement", post(decrement_count))
+        .route("/count", post(count))
         .layer(ClientIpSource::ConnectInfo.into_extension())
+        .layer(ClientIpSource::RightmostXForwardedFor.into_extension())
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
                 .allow_headers(Any),
         )
-        .with_state(AppState { db });
+        .with_state(AppState { db, salt });
 
     let host = &env::var("HOST").unwrap_or("localhost".into());
     let port = &env::var("PORT").unwrap_or("3001".into());

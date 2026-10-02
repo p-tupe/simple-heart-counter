@@ -68,3 +68,9 @@ If they do click a heart that's already incremented, the script calls `/count/de
 All this love is saved in a sibling `shc.db` - this path I may make configurable (or not). Make sure to keep it safe by regularly backing it up somewhere else.
 
 And that's that. _Simple_, am I right?
+
+## Roadmap
+
+- Allow custom db path
+- Have .shc-unclicked style as well
+- ~~Add docker/binaries~~ Used systemd service instead

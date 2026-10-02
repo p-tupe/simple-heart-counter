@@ -1,46 +1,44 @@
 <!doctype html>
 
 <html>
+  <body>
+    <!-- First, add some icon with id="shc" and a data-url pointing to shc server -->
+    <button id="shc" data-url="http://localhost:3001">&#x2661;&nbsp;</button>
 
-<body>
-  <!-- First, add some icon with id="shc" and a data-url pointing to shc server -->
-  <button id="shc" data-url="http://localhost:3001">&#x2661;&nbsp;</button>
+    <!-- Then, script will find #shc, add an on-click event and the count besides it -->
+    <script src="http://localhost:3001/shc.js" type="text/javascript"></script>
 
-  <!-- Then, script will find #shc, add an on-click event and the count besides it -->
-  <script src="http://localhost:3001/shc.js" type="text/javascript"></script>
+    <!-- Optionally, use .shc-clicked to customize how the button looks after clicking -->
+    <style>
+      .shc-clicked {
+        color: crimson;
+      }
 
-  <!-- Optionally, use .shc-clicked to customize how the button looks after clicking -->
-  <style>
-    .shc-clicked {
-      color: crimson;
-    }
+      /* below styles are just for the demo page */
+      body {
+        background-color: #000;
+        color: white;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
 
-    /* below styles are just for the demo page */
-    body {
-      background-color: #000;
-      color: white;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
+      button {
+        font-size: 64px;
+        background: none;
+        color: inherit;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        outline: inherit;
+      }
 
-    button {
-      font-size: 64px;
-      background: none;
-      color: inherit;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      outline: inherit;
-    }
-
-    button:disabled {
-      cursor: not-allowed;
-    }
-  </style>
-</body>
-
+      button:disabled {
+        cursor: not-allowed;
+      }
+    </style>
+  </body>
 </html>

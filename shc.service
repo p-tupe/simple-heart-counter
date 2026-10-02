@@ -1,0 +1,9 @@
+[Service]
+WorkingDirectory=/home/ubuntu/shc
+ExecStart=/home/ubuntu/shc/simple-heart-service
+Environment=PORT=8090
+User=ubuntu
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

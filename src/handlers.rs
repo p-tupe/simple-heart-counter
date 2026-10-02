@@ -1,8 +1,4 @@
-use axum::{
-    Json,
-    extract::State,
-    http::{HeaderMap, StatusCode},
-};
+use axum::{Json, extract::State, http::HeaderMap};
 use axum_client_ip::ClientIp;
 use serde::Serialize;
 use tokio_rusqlite::{Connection, params};
@@ -10,9 +6,10 @@ use tokio_rusqlite::{Connection, params};
 #[derive(Clone)]
 pub struct AppState {
     pub db: Connection,
+    pub salt: String,
 }
 
-pub async fn initialize(db: &Connection) -> Result<(), tokio_rusqlite::Error> {
+pub async fn initialize(db: &Connection) -> Result<String, tokio_rusqlite::Error> {
     db.call(|conn| {
         conn.execute_batch(
             "
@@ -22,10 +19,23 @@ create table if not exists counts (
     updated_at datetime not null default current_timestamp
 ); -- each row is a 'count' for that url
 
-create unique index if not exists idx_user_url on counts (user, url);",
+create unique index if not exists idx_user_url on counts (user, url);
+
+create table if not exists meta (key text primary key, value text);
+insert into meta (key, value) values ('salt', hex(randomblob(32))) on conflict do nothing;",
         )
     })
-    .await
+    .await?;
+
+    let salt = db
+        .call(|conn| {
+            conn.query_row("select value from meta where key = 'salt'", [], |r| {
+                r.get::<_, String>(0)
+            })
+        })
+        .await?;
+
+    Ok(salt)
 }
 
 #[derive(Serialize)]
@@ -35,39 +45,56 @@ pub enum Resp {
     Error(String),
 }
 
-pub async fn get_count(
+pub async fn count(
     headers: HeaderMap,
     ClientIp(ip): ClientIp,
     State(state): State<AppState>,
     Json(body): Json<serde_json::Value>,
 ) -> Json<Resp> {
-    log::info!("get_count {:?}", body["url"]);
+    log::info!("count {:?} {:?}", body["url"], body["delta"]);
 
     let Some(agent) = headers.get("user-agent").and_then(|s| s.to_str().ok()) else {
         log::error!("invalid user-agent");
         return Json(Resp::Error("could not find count".into()));
     };
-    let user = format!("{:?}::{}", ip, agent);
-
+    let user = blake3::hash(format!("{}\0{}\0{}", state.salt, ip, agent).as_bytes()).to_string();
     let url = body["url"].to_string();
     if url.is_empty() {
         log::error!("no url found");
         return Json(Resp::Error("could not find url".into()));
     }
+    let delta = body["delta"].as_i64();
 
     match state
         .db
         .call(move |conn| {
+            match delta {
+                Some(1) => {
+                    // Increment
+                    conn.execute(
+                        "insert into counts (user, url) values (?1, ?2) on conflict do nothing;",
+                        params![&user, &url],
+                    )?;
+                }
+                Some(-1) => {
+                    // Decrement
+                    conn.execute(
+                        "delete from counts where user = (?) and url = (?);",
+                        params![&user, &url],
+                    )?;
+                }
+                _ => {}
+            };
+
             conn.query_one(
-                "
-select count(*) as count,
-(select count(*) from counts where user = (?)) as clicked
+                "select count(*) as count,
+(select count(*) from counts where user = (?) and url = (?)) as clicked
 from counts where url = (?);",
-                params![user, url],
+                params![user, url, url],
                 |row| {
                     let count = row.get(0).unwrap_or(0);
                     let clicked = row.get(1).unwrap_or(0);
-                    Ok((count, clicked == 1))
+                    Ok((count, clicked > 0))
                 },
             )
         })
@@ -84,82 +111,6 @@ from counts where url = (?);",
                 log::error!("could not return count due to {}", e);
                 Json(Resp::Error("could not find count".into()))
             }
-        }
-    }
-}
-
-pub async fn increment_count(
-    headers: HeaderMap,
-    ClientIp(ip): ClientIp,
-    State(state): State<AppState>,
-    Json(body): Json<serde_json::Value>,
-) -> StatusCode {
-    log::info!("increment_count {:?}", body["url"]);
-
-    let Some(agent) = headers.get("user-agent").and_then(|s| s.to_str().ok()) else {
-        log::error!("invalid user-agent");
-        return StatusCode::BAD_REQUEST;
-    };
-    let user = format!("{:?}::{}", ip, agent);
-
-    let url = body["url"].to_string();
-    if url.is_empty() {
-        log::error!("no url found");
-        return StatusCode::BAD_REQUEST;
-    }
-
-    match state
-        .db
-        .call(move |conn| {
-            conn.execute(
-                "insert into counts (user, url) values (?, ?) on conflict do nothing;",
-                params![user, url],
-            )
-        })
-        .await
-    {
-        Ok(_) => StatusCode::OK,
-        Err(e) => {
-            log::error!("could not increment due to {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    }
-}
-
-pub async fn decrement_count(
-    headers: HeaderMap,
-    ClientIp(ip): ClientIp,
-    State(state): State<AppState>,
-    Json(body): Json<serde_json::Value>,
-) -> StatusCode {
-    log::info!("decrement_count {:?}", body["url"]);
-
-    let Some(agent) = headers.get("user-agent").and_then(|s| s.to_str().ok()) else {
-        log::error!("invalid user-agent");
-        return StatusCode::BAD_REQUEST;
-    };
-    let user = format!("{:?}::{}", ip, agent);
-
-    let url = body["url"].to_string();
-    if url.is_empty() {
-        log::error!("no url found");
-        return StatusCode::BAD_REQUEST;
-    }
-
-    match state
-        .db
-        .call(move |conn| {
-            conn.execute(
-                "delete from counts where user = (?) and url = (?);",
-                params![user, url],
-            )
-        })
-        .await
-    {
-        Ok(_) => StatusCode::OK,
-        Err(e) => {
-            log::error!("could not decrement due to {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
         }
     }
 }
