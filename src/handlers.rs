@@ -38,11 +38,12 @@ insert into meta (key, value) values ('salt', hex(randomblob(32))) on conflict d
     Ok(salt)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 #[serde(rename_all = "lowercase")]
-pub enum Resp {
-    Data { count: i32, clicked: bool },
-    Error(String),
+pub struct Resp {
+    count: i32,
+    clicked: bool,
+    error: Option<String>,
 }
 
 pub async fn count(
@@ -55,13 +56,19 @@ pub async fn count(
 
     let Some(agent) = headers.get("user-agent").and_then(|s| s.to_str().ok()) else {
         log::error!("invalid user-agent");
-        return Json(Resp::Error("could not find count".into()));
+        return Json(Resp {
+            error: Some("could not find count".into()),
+            ..Resp::default()
+        });
     };
     let user = blake3::hash(format!("{}\0{}\0{}", state.salt, ip, agent).as_bytes()).to_string();
-    let url = body["url"].to_string();
+    let url = body["url"].to_string(); // TODO: as_str
     if url.is_empty() {
         log::error!("no url found");
-        return Json(Resp::Error("could not find url".into()));
+        return Json(Resp {
+            error: Some("could not find url".into()),
+            ..Resp::default()
+        });
     }
     let delta = body["delta"].as_i64();
 
@@ -100,16 +107,25 @@ from counts where url = (?);",
         })
         .await
     {
-        Ok((count, clicked)) => Json(Resp::Data { clicked, count }),
+        Ok((count, clicked)) => Json(Resp {
+            clicked,
+            count,
+            error: None,
+        }),
+
         Err(e) => {
             if e.to_string() == "Query returned no rows" {
-                Json(Resp::Data {
+                Json(Resp {
                     clicked: false,
                     count: 0,
+                    error: None,
                 })
             } else {
                 log::error!("could not return count due to {}", e);
-                Json(Resp::Error("could not find count".into()))
+                Json(Resp {
+                    error: Some(e.to_string()),
+                    ..Resp::default()
+                })
             }
         }
     }

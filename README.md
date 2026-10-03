@@ -45,9 +45,36 @@ cargo run
 # Then open localhost:3001 and claim your heart! Easy as 1, 2, 3!!!
 ```
 
-## Extras
+## Config
 
-`HOST` (=localhost) and `PORT` (=3001) env vars allow changing which addr the server runs on. `RUST_LOG` allows `error`, `warn`, `info` (default) settings. Use 'em like so:
+`HOST` (=`localhost`) and `PORT` (=`3001`) env vars allow changing which addr the server runs on.
+
+`RUST_LOG` allows `error`, `warn`, `info` (default) settings.
+
+`IP_SOURCE` (=bare `ConnectInfo`) allows you to configure for your proxy.
+
+`IP_SOURCE` must be one of:
+
+```rust
+/// IP from the `CF-Connecting-IP` header
+CfConnectingIp
+/// IP from the `CloudFront-Viewer-Address` header
+CloudFrontViewerAddress
+/// IP from the `Fly-Client-IP` header
+FlyClientIp
+/// Rightmost IP from the `Forwarded` header
+RightmostForwarded
+/// Rightmost IP from the `X-Forwarded-For` header
+RightmostXForwardedFor
+/// IP from the `True-Client-IP` header
+TrueClientIp
+/// IP from the `X-Envoy-External-Address` address
+XEnvoyExternalAddress
+/// IP from the `X-Real-Ip` header
+XRealIp
+```
+
+Use 'em like so:
 
 ```bash
 PORT=8080 RUST_LOG=error simple-heart-counter
@@ -57,13 +84,13 @@ PORT=8080 RUST_LOG=error simple-heart-counter
 
 When the script (see `./src/shc.js`) is first loaded, it pulls in the `/count` for current `user` and `url` and appends it by searching `#shc`.
 
-A `user` is identified by `ip:user-agent` from the request header. This does mean that the same user can add mutiple hearts from different browsers/devices. I consider this a feature ;)
+A `user` is identified by a hash of `ip` & `user-agent` (with some `salt`) from the request header. This does mean that the same user can add mutiple hearts from different browsers/devices. I consider this a feature ;)
 
 A `url` is supplied by the request as `window.location`. I thought of allowing it to be configured but eh, goes beyond the "plug-n-play" doctrine. Feel free to update shc.js as you desire though - MIT license and all that.
 
-When your adoring reader clicks on a heart, the script sends a `/count/increment` request that ups the count and adds the user to the tally. And makes the heart (bleed) red. Your reader cannot touch it again. Atleast, not for giving more love.
+When your adoring reader clicks on a heart, the script sends a `/count` with `delta: 1` request that ups the count and adds the user to the tally. And makes the heart (bleed) red. Your reader cannot touch it again. Atleast, not for giving more love.
 
-If they do click a heart that's already incremented, the script calls `/count/decrement` and that does what the name implies. I added this just for the sake of completeness, I doubt you'll need it.
+If they do click a heart that's already incremented, the script calls `/count` with `delta: -1` and that does what the name implies. I added this just for the sake of completeness, I doubt you'll need it.
 
 All this love is saved in a sibling `shc.db` - this path I may make configurable (or not). Make sure to keep it safe by regularly backing it up somewhere else.
 

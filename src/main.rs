@@ -24,6 +24,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let script = include_str!("./shc.js");
     let db = Connection::open("./shc.db").await?;
     let salt = initialize(&db).await?;
+    let source = env::var("IP_SOURCE")
+        .ok()
+        .and_then(|s| s.parse::<ClientIpSource>().ok())
+        .unwrap_or(ClientIpSource::ConnectInfo);
 
     let app = Router::new()
         .route("/health", get(http::StatusCode::OK))
@@ -33,8 +37,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             get(([(header::CONTENT_TYPE, "text/javascript")], script)),
         )
         .route("/count", post(count))
-        .layer(ClientIpSource::ConnectInfo.into_extension())
-        .layer(ClientIpSource::RightmostXForwardedFor.into_extension())
+        .layer(source.into_extension())
         .layer(
             tower_http::cors::CorsLayer::new()
                 .allow_origin(Any)

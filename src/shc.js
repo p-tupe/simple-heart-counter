@@ -23,27 +23,28 @@
     else delta = 1;
     update_count(shcURL, delta, countEl, shcEl);
   });
+
+  function update_count(shcURL, delta, countEl, shcEl) {
+    fetch(shcURL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: window.location.toString(), delta }),
+    })
+      .then((d) => {
+        if (d.status != 200) {
+          throw Error("count request failed with status ", d.statusText);
+        }
+        return d.json();
+      })
+      .then(({ count, clicked }) => {
+        countEl.textContent = count;
+        if (clicked) {
+          shcEl.classList.add("shc-clicked");
+        } else {
+          shcEl.classList.remove("shc-clicked");
+        }
+      })
+      .catch((e) => console.error("simple-heart-counter:", e));
+  }
 })();
 
-function update_count(shcURL, delta, countEl, shcEl) {
-  fetch(shcURL, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ url: window.location.toString(), delta }),
-  })
-    .then((d) => {
-      if (d.status != 200) {
-        throw Error("count request failed with status ", d.statusText);
-      }
-      return d.json();
-    })
-    .then(({ data: { count, clicked } }) => {
-      countEl.textContent = count;
-      if (clicked) {
-        shcEl.classList.add("shc-clicked");
-      } else {
-        shcEl.classList.remove("shc-clicked");
-      }
-    })
-    .catch((e) => console.error("simple-heart-counter:", e));
-}

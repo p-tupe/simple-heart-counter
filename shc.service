@@ -1,6 +1,6 @@
 [Service]
 WorkingDirectory=/home/ubuntu/shc
-ExecStart=/home/ubuntu/shc/simple-heart-service
+ExecStart=/home/ubuntu/shc/simple-heart-counter
 Environment=PORT=8090
 User=ubuntu
 Restart=on-failure
