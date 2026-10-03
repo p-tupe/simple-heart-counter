@@ -39,7 +39,6 @@ insert into meta (key, value) values ('salt', hex(randomblob(32))) on conflict d
 }
 
 #[derive(Serialize, Default)]
-#[serde(rename_all = "lowercase")]
 pub struct Resp {
     count: i32,
     clicked: bool,
@@ -114,19 +113,11 @@ from counts where url = (?);",
         }),
 
         Err(e) => {
-            if e.to_string() == "Query returned no rows" {
-                Json(Resp {
-                    clicked: false,
-                    count: 0,
-                    error: None,
-                })
-            } else {
-                log::error!("could not return count due to {}", e);
-                Json(Resp {
-                    error: Some(e.to_string()),
-                    ..Resp::default()
-                })
-            }
+            log::error!("could not return count due to {}", e);
+            Json(Resp {
+                error: Some("count not return count".into()),
+                ..Resp::default()
+            })
         }
     }
 }

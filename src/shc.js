@@ -36,7 +36,12 @@
         }
         return d.json();
       })
-      .then(({ count, clicked }) => {
+      .then(({ count, clicked, error }) => {
+        if (error) {
+          console.error(error);
+          return
+        }
+
         countEl.textContent = count;
         if (clicked) {
           shcEl.classList.add("shc-clicked");

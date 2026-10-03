@@ -51,7 +51,7 @@ cargo run
 
 `RUST_LOG` allows `error`, `warn`, `info` (default) settings.
 
-`IP_SOURCE` (=bare `ConnectInfo`) allows you to configure for your proxy.
+`IP_SOURCE` (=bare `ConnectInfo`) allows you to configure user's ip addr from your proxy.
 
 `IP_SOURCE` must be one of:
 
